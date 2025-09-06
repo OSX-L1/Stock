@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ระบบเช็คสต็อกออนไลน์</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    input, select, button { padding: .5rem; margin: .25rem; }
+    .card { border: 1px solid #ccc; padding: 1rem; margin-top: 1rem; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>เช็คสต็อกสินค้า</h1>
+  <p>อัปโหลดไฟล์ Excel แล้วพิมพ์โค้ด หรือเลือกจากรายการ</p>
+
+  <input type="file" id="file" accept=".xlsx" />
+  <br>
+  <input type="text" id="codeInput" placeholder="เช่น SB 35-38">
+  <button onclick="searchCode()">เช็ค</button>
+  <select id="codeSelect" onchange="searchCode(this.value)">
+    <option value="">-- เลือกรหัส --</option>
+  </select>
+
+  <div id="result" class="card" style="display:none;"></div>
+
+<script>
+let rows = [];
+let codes = [];
+
+document.getElementById("file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const data = await file.arrayBuffer();
+  const wb = XLSX.read(data, { type: "array" });
+  const sheet = wb.SheetNames[0];
+  rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { header:1, raw:true });
+
+  // ดึงรหัสจากคอลัมน์ B (index=1)
+  codes = [...new Set(rows.map(r => (r[1]||"").toString().trim()))].filter(v => v);
+  const select = document.getElementById("codeSelect");
+  select.innerHTML = '<option value="">-- เลือกรหัส --</option>';
+  codes.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    select.appendChild(opt);
+  });
+  alert("โหลดไฟล์เสร็จแล้ว! มีรหัส " + codes.length + " รายการ");
+});
+
+function searchCode(codeValue) {
+  const q = codeValue || document.getElementById("codeInput").value.trim();
+  if (!q) return alert("กรุณาใส่รหัส");
+  const idx = rows.findIndex(r => (r[1]||"").toString().trim() === q);
+  const resBox = document.getElementById("result");
+  if (idx < 0) {
+    resBox.style.display="block";
+    resBox.innerHTML = "<b>ไม่พบรหัส:</b> " + q;
+    return;
+  }
+  const row = rows[idx];
+  let total = 0;
+  for (let c=2; c<row.length; c++) {
+    const val = parseInt(row[c]);
+    if (!isNaN(val)) total += val;
+  }
+  resBox.style.display="block";
+  resBox.innerHTML = `<b>ผลลัพธ์:</b><br>รหัส <b>${q}</b><br>รวมจำนวน: ${total.toLocaleString()}`;
+}
+</script>
+</body>
+</html>
